@@ -11,6 +11,9 @@
 
 #define LOG_TAG "qc-fqd"
 
+/* remembered powersave bias status -> avoid re-reading the file */
+static int psb_status = PSB_OFF+1;
+
 
 /**
  * try to find an online core and bring it down
@@ -74,7 +77,17 @@ int main() {
 			vote_down++;
 		}
 		
-//		printf("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d\n", ss_usage, ss_rqworst, ss_cores, vote_up, vote_down, votes);
+		/* check if we have to change our powersave bias */
+		if(ss_rqworst > PSB_TRIGGER && psb_status != PSB_OFF) { /* Turn on if we have a long wait queue */
+			psb_status = PSB_OFF;
+			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
+		}
+		else if(ss_rqworst <= PSB_TRIGGER && psb_status != PSB_ON && ss_cores == 1 && ss_usage < MP_RAMP_UP) {
+			psb_status = PSB_ON;
+			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
+		}
+		
+//		printf("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rqworst, ss_cores, vote_up, vote_down, votes, psb_status);
 		
 		if(votes == MP_RAMP_VO) {
 			if(vote_up == MP_RAMP_VO && ss_cores < NUM_CORES)
