@@ -7,13 +7,14 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <linux/input.h>
+
 #include "qc-fqd.h"
 
 #define LOG_TAG "qc-fqd"
 
 /* remembered powersave bias status -> avoid re-reading the file */
 static int psb_status = -1;
-
 
 char *sysfs_path_utilization(int core) {
 	static char buf[255];
@@ -35,6 +36,7 @@ char *sysfs_path_maxfreq(int core) {
 	snprintf(buf, sizeof(buf)-1, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", core);
 	return buf;
 }
+
 
 int main() {
 	
@@ -82,7 +84,7 @@ int main() {
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
 		
-//		printf("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rqworst, ss_cores, vote_up, vote_down, votes, psb_status);
+		debug_print("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rqworst, ss_cores, vote_up, vote_down, votes, psb_status);
 		
 		if(votes == MP_RAMP_VO) {
 			if(vote_up == MP_RAMP_VO && ss_cores < NUM_CORES)
@@ -101,8 +103,10 @@ int main() {
 		/* Check if only one core is running while the screen is
 		 * off. If it is: We are pretty idle and will probably
 		 * stay like this for some time -> increase the sampling delay */
-		if(ss_cores == 1 && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
-			sleep(OFF_SAMPLE_DELAY_SEC);
+		if(ss_cores == 1 && psb_status == PSB_ON && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
+			debug_print("%d + sleeping until screen is on again\n", sample_delay);
+			wait_for_screen_on();
+			debug_print("%d - screen is back\n", sample_delay);
 		}
 	}
 	
@@ -117,7 +121,7 @@ static void zap_core() {
 	for( ; i > 0 ; i--) {
 		if(sysfs_read(sysfs_path_online(i)) == 1) {
 			sysfs_write(sysfs_path_online(i), 0);
-			printf("zap_core: core %d is now offline\n", i);
+			debug_print("zap_core: core %d is now offline\n", i);
 			break;
 		}
 	}
@@ -131,7 +135,7 @@ static void enable_core() {
 	for(i=1 ; i<NUM_CORES; i++) {
 		if(sysfs_read(sysfs_path_online(i)) == 0) {
 			sysfs_write(sysfs_path_online(i), 1);
-			printf("enable_core: core %d is now online\n", i);
+			debug_print("enable_core: core %d is now online\n", i);
 			break;
 		}
 	}
@@ -179,6 +183,27 @@ static int bval(int a, int b) {
 	return (a > b ? a : b );
 }
 
+/************************************************************
+ * Sleep and block until the screen is on again             *
+*************************************************************/
+static void wait_for_screen_on() {
+	int fd;
+	struct input_event ev;
+	
+	fd = open(DEVFS_EVENT_PWRBTN, O_RDONLY);
+	if(fd < 0)
+		xdie("Failed to open input event");
+	
+	for(;;) {
+		read(fd, &ev, sizeof(struct input_event));
+		if(ev.type == 1 && ev.value == 0) { /* value 0 event -> power key up */
+			sleep(1); /* enabling the screen takes some time */
+			if(sysfs_read(SYSFS_LM3533_BRIGHTNESS) != 0)
+				break;
+		}
+	}
+	close(fd);
+}
 
 /************************************************************
  * Logs a fatal error and exits                             *
