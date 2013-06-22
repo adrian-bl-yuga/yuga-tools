@@ -12,13 +12,8 @@
 #define LOG_TAG "qc-fqd"
 
 /* remembered powersave bias status -> avoid re-reading the file */
-static int psb_status = PSB_OFF+1;
+static int psb_status = -1;
 
-
-/**
- * try to find an online core and bring it down
- * this will never touch core0
-*/
 
 char *sysfs_path_utilization(int core) {
 	static char buf[255];
