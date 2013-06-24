@@ -184,13 +184,35 @@ static int bval(int a, int b) {
 }
 
 /************************************************************
+ * Returns the FD to our powerbutton event file, -1 on err  *
+*************************************************************/
+static int get_pwrbtn_fd() {
+	static char buf[255];
+	int fd = -1;
+	int i;
+	for(i=0;i<16;i++) {
+		snprintf(buf, sizeof(buf)-1, "/dev/input/event%d", i);
+		fd = open(buf, O_RDONLY);
+		if(fd < 0)
+			continue;
+
+		ioctl(fd, EVIOCGNAME(sizeof(buf)-1), buf);
+		if(memcmp(BUTTON_NAME_PWRKEY, buf, sizeof(BUTTON_NAME_PWRKEY)) == 0)
+			goto EARLY_EXIT;
+		close(fd);
+	}
+EARLY_EXIT:
+	return fd;
+}
+
+/************************************************************
  * Sleep and block until the screen is on again             *
 *************************************************************/
 static void wait_for_screen_on() {
 	int fd;
 	struct input_event ev;
 	
-	fd = open(DEVFS_EVENT_PWRBTN, O_RDONLY);
+	fd = get_pwrbtn_fd();
 	if(fd < 0)
 		xdie("Failed to open input event");
 	
