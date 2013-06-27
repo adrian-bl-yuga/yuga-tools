@@ -40,8 +40,8 @@ char *sysfs_path_maxfreq(int core) {
 
 int main() {
 	
-	int ccore, cusage, crqueue;
-	int ss_cores, ss_usage, ss_rqworst;
+	int ccore, cusage;
+	int ss_cores, ss_usage, ss_rq;
 	struct timeval start, end;
 	useconds_t sample_delay;
 	
@@ -55,11 +55,11 @@ int main() {
 		gettimeofday(&start, NULL);
 		
 		/* collect global system load */
-		ss_cores = ss_usage = ss_rqworst = 0;
+		ss_cores = ss_usage = 0;
+		ss_rq = sysfs_read( sysfs_path_runqueue(0) );
+		
 		for(ccore=0;ccore<NUM_CORES;ccore++) {
 			cusage = get_avg_cpu_usage(ccore);
-			crqueue = sysfs_read( sysfs_path_runqueue(ccore) );
-			ss_rqworst = bval(ss_rqworst, crqueue);
 			
 			if(cusage >= 0) {
 				ss_cores++; /* this core is online */
@@ -68,23 +68,23 @@ int main() {
 		}
 		ss_usage = ss_usage / ss_cores;
 		votes++;
-		if(ss_usage >= MP_RAMP_UP && ss_rqworst >= MP_RUNQ_MIN) {
+		if(ss_usage >= MP_RAMP_UP && ss_rq >= MP_RUNQ_MIN) {
 			vote_up++;
 		} else if (ss_usage <= MP_RAMP_DN) {
 			vote_down++;
 		}
 		
 		/* check if we have to change our powersave bias */
-		if(ss_rqworst > PSB_TRIGGER && psb_status != PSB_OFF) { /* Turn on if we have a long wait queue */
+		if(ss_rq > PSB_TRIGGER && psb_status != PSB_OFF) { /* Turn on if we have a long wait queue */
 			psb_status = PSB_OFF;
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
-		else if(ss_rqworst <= PSB_TRIGGER && psb_status != PSB_ON && ss_cores == 1 && ss_usage < MP_RAMP_UP) {
+		else if(ss_rq <= PSB_TRIGGER && psb_status != PSB_ON && ss_cores == 1 && ss_usage < MP_RAMP_UP) {
 			psb_status = PSB_ON;
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
 		
-		debug_print("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rqworst, ss_cores, vote_up, vote_down, votes, psb_status);
+		debug_print("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rq, ss_cores, vote_up, vote_down, votes, psb_status);
 		
 		if(votes == MP_RAMP_VO) {
 			if(vote_up == MP_RAMP_VO && ss_cores < NUM_CORES)
@@ -104,9 +104,7 @@ int main() {
 		 * off. If it is: We are pretty idle and will probably
 		 * stay like this for some time -> increase the sampling delay */
 		if(ss_cores == 1 && psb_status == PSB_ON && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
-			debug_print("%d + sleeping until screen is on again\n", sample_delay);
 			wait_for_screen_on();
-			debug_print("%d - screen is back\n", sample_delay);
 		}
 	}
 	
@@ -174,13 +172,6 @@ static int get_avg_val(char *path, int samples) {
 	}
 	r = r/samples;
 	return r;
-}
-
-/************************************************************
- * Return bigger integer value                              *
-*************************************************************/
-static int bval(int a, int b) {
-	return (a > b ? a : b );
 }
 
 /************************************************************

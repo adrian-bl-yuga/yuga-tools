@@ -8,7 +8,6 @@ static int get_pwrbtn_fd();
 static int sysfs_read(char *path);
 static int get_avg_val(char *path, int samples);
 static int get_avg_cpu_usage(int core);
-static int bval(int a, int b);
 char *sysfs_path_utilization(int core);
 char *sysfs_path_online(int core);
 char *sysfs_path_runqueue(int core);
