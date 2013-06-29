@@ -8,6 +8,8 @@ static int get_pwrbtn_fd();
 static int sysfs_read(char *path);
 static int get_avg_val(char *path, int samples);
 static int get_avg_cpu_usage(int core);
+static int confget_multicore_enabled();
+static int confget_powersave_bias();
 char *sysfs_path_utilization(int core);
 char *sysfs_path_online(int core);
 char *sysfs_path_runqueue(int core);
@@ -33,6 +35,9 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 #define SYSFS_LM3533_BRIGHTNESS "/sys/devices/i2c-0/0-0036/leds/lm3533-lcd-bl/brightness"
 #define SYSFS_POWERSAVE_BIAS    "/sys/devices/system/cpu/cpufreq/ondemand/powersave_bias"
 
+#define SETTINGS_BIAS_VALUE      "/data/misc/.pabx_settings_powersave_bias"
+#define SETTINGS_SINGLECORE_MODE "/data/misc/.pabx_singlecore_mode"
+
 /* how many cores the system has */
 #define NUM_CORES 4
 
@@ -42,8 +47,6 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 #define MP_RUNQ_MIN 2 /* only bring new cores up if the worst run-queue is >= 2 */
 
 #define PSB_TRIGGER 2
-#define PSB_OFF     0
-#define PSB_ON      250
 
 #define GLOBAL_SAMPLE_TARGET 1000000 /* 1 second */
 #define CORE_SAMPLE_TARGET 100000

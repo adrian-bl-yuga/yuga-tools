@@ -41,13 +41,16 @@ char *sysfs_path_maxfreq(int core) {
 int main() {
 	
 	int ccore, cusage;
-	int ss_cores, ss_usage, ss_rq;
+	int ss_cores, ss_usage, ss_rq, conf_use_multicore, conf_powersave_bias;
 	struct timeval start, end;
 	useconds_t sample_delay;
 	
 	int votes = 0;
 	int vote_up = 0;
 	int vote_down = 0;
+	
+	conf_use_multicore = confget_multicore_enabled();
+	conf_powersave_bias = confget_powersave_bias();
 	
 	ALOGI("starting up");
 	for(;;) {
@@ -75,19 +78,19 @@ int main() {
 		}
 		
 		/* check if we have to change our powersave bias */
-		if(ss_rq > PSB_TRIGGER && psb_status != PSB_OFF) { /* Turn on if we have a long wait queue */
-			psb_status = PSB_OFF;
+		if(ss_rq > PSB_TRIGGER && psb_status != 0) { /* Disable powersave bias if we have a 'large' runqueue */
+			psb_status = 0;
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
-		else if(ss_rq <= PSB_TRIGGER && psb_status != PSB_ON && ss_cores == 1 && ss_usage < MP_RAMP_UP) {
-			psb_status = PSB_ON;
+		else if(ss_rq <= PSB_TRIGGER && psb_status != conf_powersave_bias && ss_cores == 1 && ss_usage < MP_RAMP_UP) {
+			psb_status = conf_powersave_bias;
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
 		
 		debug_print("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rq, ss_cores, vote_up, vote_down, votes, psb_status);
 		
 		if(votes == MP_RAMP_VO) {
-			if(vote_up == MP_RAMP_VO && ss_cores < NUM_CORES)
+			if(vote_up == MP_RAMP_VO && ss_cores < NUM_CORES && conf_use_multicore == 1)
 				enable_core();
 			if(vote_down == MP_RAMP_VO && ss_cores > 1)
 				zap_core();
@@ -103,12 +106,28 @@ int main() {
 		/* Check if only one core is running while the screen is
 		 * off. If it is: We are pretty idle and will probably
 		 * stay like this for some time -> increase the sampling delay */
-		if(ss_cores == 1 && psb_status == PSB_ON && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
+		if(ss_cores == 1 && psb_status == conf_powersave_bias && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
 			wait_for_screen_on();
 		}
 	}
 	
 	return 0;
+}
+
+/************************************************************
+ * Returns != 0 if we are allowed to bring up multiple cores*
+*************************************************************/
+static int confget_multicore_enabled() {
+	int result = access(SETTINGS_SINGLECORE_MODE, F_OK);
+	return (result == 0 ? 0 : 1);
+}
+
+/************************************************************
+ * Returns the configured powersave bias, 0 on error        *
+*************************************************************/
+static int confget_powersave_bias() {
+	int value = sysfs_read(SETTINGS_BIAS_VALUE);
+	return (value >= 0 ? value : 0);
 }
 
 /************************************************************
