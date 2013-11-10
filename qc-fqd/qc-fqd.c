@@ -13,9 +13,6 @@
 
 #define LOG_TAG "qc-fqd"
 
-/* remembered powersave bias status -> avoid re-reading the file */
-static int psb_status = -1;
-
 char *sysfs_path_utilization(int core) {
 	static char buf[255];
 	snprintf(buf, sizeof(buf)-1, "/sys/devices/system/cpu/cpu%d/cpufreq/cpu_utilization", core);
@@ -41,15 +38,17 @@ char *sysfs_path_maxfreq(int core) {
 int main() {
 	
 	int ccore, cusage;
-	int ss_cores, ss_usage, ss_rq, conf_use_multicore, conf_powersave_bias;
+	int ss_cores, ss_usage, ss_rq, conf_max_num_cores, conf_min_num_cores, conf_powersave_bias;
 	struct timeval start, end;
 	useconds_t sample_delay;
 	
 	int votes = 0;
 	int vote_up = 0;
 	int vote_down = 0;
+	int psb_status = -1; // remember powersave bias status to avoid re-reading the file
 	
-	conf_use_multicore = confget_multicore_enabled();
+	conf_max_num_cores = confget_max_num_cores();
+	conf_min_num_cores = confget_min_num_cores();
 	conf_powersave_bias = confget_powersave_bias();
 	
 	ALOGI("starting up");
@@ -82,18 +81,19 @@ int main() {
 			psb_status = 0;
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
-		else if(ss_rq <= PSB_TRIGGER && psb_status != conf_powersave_bias && ss_cores == 1 && ss_usage < MP_RAMP_UP) {
+		else if(ss_rq <= PSB_TRIGGER && psb_status != conf_powersave_bias && ss_cores == conf_min_num_cores && ss_usage < MP_RAMP_UP) {
 			psb_status = conf_powersave_bias;
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
 		
 		debug_print("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rq, ss_cores, vote_up, vote_down, votes, psb_status);
 		
-		if(votes == MP_RAMP_VO) {
-			if(vote_up == MP_RAMP_VO && ss_cores < NUM_CORES && conf_use_multicore == 1)
+		if(votes == MP_RAMP_VO) { // got enough rounds -> do something
+			if( (vote_up == MP_RAMP_VO && ss_cores < conf_max_num_cores) || ss_cores < conf_min_num_cores ) {
 				enable_core();
-			if(vote_down == MP_RAMP_VO && ss_cores > 1)
+			} else if(vote_down == MP_RAMP_VO && ss_cores > conf_min_num_cores) {
 				zap_core();
+			}
 			votes = vote_up = vote_down = 0;
 		}
 		
@@ -106,7 +106,7 @@ int main() {
 		/* Check if only one core is running while the screen is
 		 * off. If it is: We are pretty idle and will probably
 		 * stay like this for some time -> increase the sampling delay */
-		if(ss_cores == 1 && psb_status == conf_powersave_bias && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
+		if(ss_cores == conf_min_num_cores && psb_status == conf_powersave_bias && sysfs_read(SYSFS_LM3533_BRIGHTNESS) == 0) {
 			wait_for_screen_on();
 		}
 	}
@@ -115,11 +115,19 @@ int main() {
 }
 
 /************************************************************
- * Returns != 0 if we are allowed to bring up multiple cores*
+ * Returns max amount of allowed online cores               *
 *************************************************************/
-static int confget_multicore_enabled() {
-	int result = access(SETTINGS_SINGLECORE_MODE, F_OK);
-	return (result == 0 ? 0 : 1);
+static int confget_max_num_cores() {
+	int value = sysfs_read(SETTINGS_MAX_NUM_CORES);
+	return (value > 0 && value <= NUM_CORES ? value : NUM_CORES);
+}
+
+/************************************************************
+ * Returns min amount of cores to keep online               *
+*************************************************************/
+static int confget_min_num_cores() {
+	int value = sysfs_read(SETTINGS_MIN_NUM_CORES);
+	return (value > 0 && value <= NUM_CORES ? value : 1);
 }
 
 /************************************************************

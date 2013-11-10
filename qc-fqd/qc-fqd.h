@@ -8,7 +8,8 @@ static int get_pwrbtn_fd();
 static int sysfs_read(char *path);
 static int get_avg_val(char *path, int samples);
 static int get_avg_cpu_usage(int core);
-static int confget_multicore_enabled();
+static int confget_max_num_cores();
+static int confget_min_num_cores();
 static int confget_powersave_bias();
 char *sysfs_path_utilization(int core);
 char *sysfs_path_online(int core);
@@ -36,7 +37,8 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 #define SYSFS_POWERSAVE_BIAS    "/sys/devices/system/cpu/cpufreq/ondemand/powersave_bias"
 
 #define SETTINGS_BIAS_VALUE      "/data/misc/.pabx_settings_powersave_bias"
-#define SETTINGS_SINGLECORE_MODE "/data/misc/.pabx_singlecore_mode"
+#define SETTINGS_MAX_NUM_CORES   "/data/misc/.pabx_settings_max_cores"
+#define SETTINGS_MIN_NUM_CORES   "/data/misc/.pabx_settings_min_cores"
 
 /* how many cores the system has */
 #define NUM_CORES 4
@@ -48,5 +50,5 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 
 #define PSB_TRIGGER 2
 
-#define GLOBAL_SAMPLE_TARGET 1000000 /* 1 second */
-#define CORE_SAMPLE_TARGET 100000
+#define GLOBAL_SAMPLE_TARGET 800000 /* 0.8 second */
+#define CORE_SAMPLE_TARGET    80000
