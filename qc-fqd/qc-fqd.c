@@ -13,9 +13,9 @@
 
 #define LOG_TAG "qc-fqd"
 
-char *sysfs_path_utilization(int core) {
+char *sysfs_path_curfreq(int core) {
 	static char buf[255];
-	snprintf(buf, sizeof(buf)-1, "/sys/devices/system/cpu/cpu%d/cpufreq/cpu_utilization", core);
+	snprintf(buf, sizeof(buf)-1, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", core);
 	return buf;
 }
 char *sysfs_path_online(int core) {
@@ -171,16 +171,15 @@ static void enable_core() {
  * into account for the % value                             *
 *************************************************************/
 static int get_avg_cpu_usage(int core) {
-	int max_freq, avg_usage;
-	float ratio;
+	int max_freq, avg_freq;
 	int real_usage = -1;
 	
+	/* Consider CPU-Usage to be 100% if we are hitting this frequency */
 	max_freq  = sysfs_read( sysfs_path_maxfreq(core) );
 	
-	if(max_freq > 0) {
-		ratio = (float)CORE_MAX_FREQ / max_freq;
-		avg_usage = get_avg_val( sysfs_path_utilization(core), 4);
-		real_usage = avg_usage * ratio;
+	if(max_freq > CORE_MIN_FREQ) {
+		avg_freq = get_avg_val( sysfs_path_curfreq(core), 4);
+		real_usage = ((float)(avg_freq-CORE_MIN_FREQ)/ (max_freq-CORE_MIN_FREQ) )*100;
 	}
 	
 	return real_usage;

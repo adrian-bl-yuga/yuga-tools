@@ -11,7 +11,7 @@ static int get_avg_cpu_usage(int core);
 static int confget_max_num_cores();
 static int confget_min_num_cores();
 static int confget_powersave_bias();
-char *sysfs_path_utilization(int core);
+char *sysfs_path_curfreq(int core);
 char *sysfs_path_online(int core);
 char *sysfs_path_runqueue(int core);
 char *sysfs_path_maxfreq(int core);
