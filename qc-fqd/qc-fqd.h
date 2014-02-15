@@ -4,7 +4,7 @@ static void sysfs_write(char *path, int value);
 static void zap_core();
 static void enable_core();
 static void wait_for_screen_on();
-static int get_pwrbtn_fd();
+static int get_clearpad_fd();
 static int sysfs_read(char *path);
 static int get_avg_val(char *path, int samples);
 static int get_avg_cpu_usage(int core);
@@ -32,7 +32,7 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 #define CORE_MAX_FREQ available_freq[NUM_FREQ-1]
 #define CORE_MIN_FREQ available_freq[0]
 
-#define BUTTON_NAME_PWRKEY      "pmic8xxx_pwrkey"
+#define INPUT_NAME_TOUCHSCREEN  "clearpad"
 #define SYSFS_LM3533_BRIGHTNESS "/sys/devices/i2c-0/0-0036/leds/lm3533-lcd-bl/brightness"
 #define SYSFS_POWERSAVE_BIAS    "/sys/devices/system/cpu/cpufreq/ondemand/powersave_bias"
 

@@ -202,9 +202,9 @@ static int get_avg_val(char *path, int samples) {
 }
 
 /************************************************************
- * Returns the FD to our powerbutton event file, -1 on err  *
+ * Returns the FD to our touchscreen event file, -1 on err  *
 *************************************************************/
-static int get_pwrbtn_fd() {
+static int get_clearpad_fd() {
 	static char buf[255];
 	int fd = -1;
 	int i;
@@ -215,7 +215,7 @@ static int get_pwrbtn_fd() {
 			continue;
 
 		ioctl(fd, EVIOCGNAME(sizeof(buf)-1), buf);
-		if(memcmp(BUTTON_NAME_PWRKEY, buf, sizeof(BUTTON_NAME_PWRKEY)) == 0)
+		if(memcmp(INPUT_NAME_TOUCHSCREEN, buf, sizeof(INPUT_NAME_TOUCHSCREEN)) == 0)
 			goto EARLY_EXIT;
 		close(fd);
 	}
@@ -230,14 +230,14 @@ static void wait_for_screen_on() {
 	int fd;
 	struct input_event ev;
 	
-	fd = get_pwrbtn_fd();
+	fd = get_clearpad_fd();
 	if(fd < 0)
 		xdie("Failed to open input event");
 	
 	for(;;) {
 		read(fd, &ev, sizeof(struct input_event));
-		if(ev.type == 1 && ev.value == 0) { /* value 0 event -> power key up */
-			sleep(1); /* enabling the screen takes some time */
+		if(ev.type == 0 && ev.value == 0) { /* value 0 event -> finger up */
+			usleep(200000); /* Turning the screen on may take some time: delay by 0.2 sec */
 			if(sysfs_read(SYSFS_LM3533_BRIGHTNESS) != 0)
 				break;
 		}
