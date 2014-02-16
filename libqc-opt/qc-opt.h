@@ -1,0 +1,2 @@
+#define PL_REQUEST_FAILED -1
+#define PL_REQUEST_SUCCEEDED 0
