@@ -36,15 +36,20 @@
  *   0000106f T qc_u_digit
  */
 
+#include <log/log.h>
+#include "qc-opt.h"
 
 int perf_lock_acq(int handle, int duration, int *list) {
+	ALOGE("pabx lock_acq for handle %d called", handle);
 	return 1; // handle, 0 on error
 }
 
 int perf_lock_rel(int handle) {
+	ALOGE("pabx lock_rel for handle %d called", handle);
 	return PL_REQUEST_SUCCEEDED;
 }
 
 int perf_cpu_setoptions(int rq_type, int rq_value) {
+	ALOGE("pabx cpu_setoptions rq_type=%d, rq_value=%d called", rq_type, rq_value);
 	return 1;
 }
