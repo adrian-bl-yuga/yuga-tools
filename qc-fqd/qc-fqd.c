@@ -38,7 +38,8 @@ char *sysfs_path_maxfreq(int core) {
 int main() {
 	
 	int ccore, cusage;
-	int ss_cores, ss_usage, ss_rq, conf_max_num_cores, conf_min_num_cores, conf_powersave_bias;
+	int ss_cores, ss_usage, conf_max_num_cores, conf_min_num_cores, conf_powersave_bias;
+	double ss_rq;
 	struct timeval start, end;
 	useconds_t sample_delay;
 	
@@ -86,7 +87,7 @@ int main() {
 			sysfs_write(SYSFS_POWERSAVE_BIAS, psb_status);
 		}
 		
-		debug_print("sysload=%d, wrq=%d, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rq, ss_cores, vote_up, vote_down, votes, psb_status);
+		debug_print("sysload=%d, wrq=%.3f, cores=%d, vote_up=%d, vote_down=%d, votes=%d, psb=%d\n", ss_usage, ss_rq, ss_cores, vote_up, vote_down, votes, psb_status);
 		
 		if(votes == MP_RAMP_VO) { // got enough rounds -> do something
 			if( (vote_up == MP_RAMP_VO && ss_cores < conf_max_num_cores) || ss_cores < conf_min_num_cores ) {
@@ -257,14 +258,14 @@ static void xdie(char *e) {
 /************************************************************
  * Read integer value from sysfs                            *
 *************************************************************/
-static int sysfs_read(char *path) {
+static double sysfs_read(char *path) {
 	char buf[64];
-	int rv = -1;
+	double rv = -1;
 	int fd = open(path, O_RDONLY);
 	
 	if (fd >= 0) {
 		if( read(fd, buf, sizeof(buf)) != -1 ) {
-			rv = atoi(buf);
+			rv = atof(buf);
 		}
 		close(fd);
 	}

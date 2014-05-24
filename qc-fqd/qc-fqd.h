@@ -5,7 +5,7 @@ static void zap_core();
 static void enable_core();
 static void wait_for_screen_on();
 static int get_clearpad_fd();
-static int sysfs_read(char *path);
+static double sysfs_read(char *path);
 static int get_avg_val(char *path, int samples);
 static int get_avg_cpu_usage(int core);
 static int confget_max_num_cores();
@@ -46,7 +46,7 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 #define MP_RAMP_UP 85 /* only go up if our average load is at least 85% */
 #define MP_RAMP_DN 20 /* only go down if our load is <= 20%             */
 #define MP_RAMP_VO  3 /* how many measurements to use                   */
-#define MP_RUNQ_MIN 2 /* only bring new cores up if the worst run-queue is >= 2 */
+#define MP_RUNQ_MIN 1.3 /* only bring new cores up if the worst run-queue is >= 1.3 */
 
 #define PSB_TRIGGER 2
 
