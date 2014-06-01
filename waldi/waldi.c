@@ -14,27 +14,26 @@
 #define LOG_TAG "waldi"
 
 int main() {
-
-	pid_t gpl_pid = 0;
-	int i = 0;
-	int catched = 0;
+	pid_t bad_pid = 0;
+	unsigned long wasted[2];
+	char sysbuff[1023];
 
 	for(;;) {
-		gpl_pid = get_pid_of_com_google_process_location();
-
-		if(gpl_pid > 0) {
-			catched = i = 0;
-			for(; i<10; i++) {
-				if(is_running(gpl_pid) == 1)
-					catched++;
-				sleep(1);
+		bad_pid = get_pid_of_com_google_process_location();
+		if(bad_pid > 0) {
+			wasted[0] = get_utime(bad_pid);
+			sleep(SAMPLING_INTERVAL);
+			wasted[1] = (get_utime(bad_pid) - wasted[0])/SAMPLING_INTERVAL;
+			debug_print(">> %s did %lu jiffies per second\n", WALDI_SEARCH_PROCESS, wasted[1]);
+			
+			if(wasted[1] > KILL_CEILING) {
+				ALOGI("google went bananas, killing process with PID %d", bad_pid);
+				snprintf(sysbuff, sizeof(sysbuff), "/system/bin/am force-stop %s", WALDI_MAIN_PROCESS);
+				system(sysbuff);
 			}
-			debug_print("checks=%d, catched=%d\n", i, catched);
 		}
-
-		sleep(15);
+		sleep(IDLE_SLEEP);
 	}
-
 
 	return 0;
 }
@@ -43,11 +42,12 @@ int main() {
  * Returns '1' if given PID is currently running
  * Returns '0' if not or '-1' on error
  */
-int is_running(pid_t pid) {
-	char buffer[100];
-	int fd;
-	int result = -1;
-	int space_count = 0;
+unsigned long get_utime(pid_t pid) {
+	char buffer[1023];
+	unsigned long result = 0;
+	int fd = -1;
+	ssize_t space_count = 0;
+	ssize_t start_at = 0;
 	ssize_t len, pos;
 
 	snprintf(buffer, 32, "/proc/%d/stat", pid);
@@ -55,17 +55,22 @@ int is_running(pid_t pid) {
 	if(fd < 0)
 		goto early_exit;
 	len = read(fd, buffer, sizeof buffer-1);
+	buffer[len] = 0;
 	close(fd);
 
 	// Search for the char following the 2nd space:
 	// PID (procname) S
 	for(pos=0;pos<len;pos++) {
-		if(space_count == 2) {
-			result = (buffer[pos] == 'R' ? 1 : 0);
-			break;
-		}
-		if(buffer[pos] == ' ')
+		if(buffer[pos] == ' ') {
 			space_count++;
+			if(space_count == 13) {
+				start_at = pos+1; // next char will be the start of the new token
+			} else if(space_count == 14) {
+				buffer[pos] = 0;
+				result = atol(&buffer[start_at]);
+				break;
+			}
+		}
 	}
 
 early_exit:
