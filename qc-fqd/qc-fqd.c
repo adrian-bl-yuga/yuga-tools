@@ -41,7 +41,7 @@ int main() {
 	int ss_cores, ss_usage, conf_max_num_cores, conf_min_num_cores, conf_powersave_bias;
 	double ss_rq;
 	struct timeval start, end;
-	useconds_t sample_delay;
+	suseconds_t sample_delay;
 	
 	int votes = 0;
 	int vote_up = 0;
