@@ -36,9 +36,9 @@ static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 
 #define SYSFS_LM3533_BRIGHTNESS "/sys/devices/i2c-0/0-0036/leds/lm3533-lcd-bl/brightness"
 #define SYSFS_POWERSAVE_BIAS    "/sys/devices/system/cpu/cpufreq/ondemand/powersave_bias"
 
-#define SETTINGS_BIAS_VALUE      "/data/misc/.pabx_settings_powersave_bias"
-#define SETTINGS_MAX_NUM_CORES   "/data/misc/.pabx_settings_max_cores"
-#define SETTINGS_MIN_NUM_CORES   "/data/misc/.pabx_settings_min_cores"
+#define SETTINGS_BIAS_VALUE      "/data/.pabx/pabx_settings_powersave_bias"
+#define SETTINGS_MAX_NUM_CORES   "/data/.pabx/pabx_settings_max_cores"
+#define SETTINGS_MIN_NUM_CORES   "/data/.pabx/pabx_settings_min_cores"
 
 /* how many cores the system has */
 #define NUM_CORES 4
