@@ -29,9 +29,6 @@ char *sysfs_path_maxfreq(int core);
 #define NUM_FREQ 12
 static int available_freq[NUM_FREQ] = { 384000, 486000, 594000, 702000, 810000, 918000, 1026000, 1134000, 1242000, 1350000, 1458000, 1512000 };
 
-#define CORE_MAX_FREQ available_freq[NUM_FREQ-1]
-#define CORE_MIN_FREQ available_freq[0]
-
 #define INPUT_NAME_TOUCHSCREEN  "clearpad"
 #define SYSFS_LM3533_BRIGHTNESS "/sys/devices/i2c-0/0-0036/leds/lm3533-lcd-bl/brightness"
 #define SYSFS_POWERSAVE_BIAS    "/sys/devices/system/cpu/cpufreq/ondemand/powersave_bias"

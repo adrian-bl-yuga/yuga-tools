@@ -33,6 +33,11 @@ char *sysfs_path_maxfreq(int core) {
 	snprintf(buf, sizeof(buf)-1, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", core);
 	return buf;
 }
+char *sysfs_path_minfreq(int core) {
+	static char buf[255];
+	snprintf(buf, sizeof(buf)-1, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", core);
+	return buf;
+}
 
 
 int main() {
@@ -172,15 +177,18 @@ static void enable_core() {
  * into account for the % value                             *
 *************************************************************/
 static int get_avg_cpu_usage(int core) {
-	int max_freq, avg_freq;
+	int max_freq, avg_freq, min_freq;
 	int real_usage = -1;
 	
 	/* Consider CPU-Usage to be 100% if we are hitting this frequency */
 	max_freq  = sysfs_read( sysfs_path_maxfreq(core) );
-	
-	if(max_freq > CORE_MIN_FREQ) {
-		avg_freq = get_avg_val( sysfs_path_curfreq(core), 4);
-		real_usage = ((float)(avg_freq-CORE_MIN_FREQ)/ (max_freq-CORE_MIN_FREQ) )*100;
+	min_freq  = sysfs_read( sysfs_path_minfreq(core) );
+
+	if(min_freq != -1 && max_freq != -1) { // got real values for both types
+		if(max_freq > min_freq) {
+			avg_freq = get_avg_val( sysfs_path_curfreq(core), 4);
+			real_usage = ((float)(avg_freq-min_freq)/ (max_freq-min_freq) )*100;
+		}
 	}
 	
 	return real_usage;
